@@ -35,14 +35,18 @@ export class ConfluenceClient {
   }
 
   async search(input: {
-    query?: string;
-    title?: string;
-    label?: string;
-    contentType?: SearchContentType;
-    limit: number;
-    start: number;
-    includeContent: boolean;
+    query?: string | undefined;
+    title?: string | undefined;
+    label?: string | undefined;
+    contentType?: SearchContentType | undefined;
+    limit?: number | undefined;
+    start?: number | undefined;
+    includeContent?: boolean | undefined;
   }): Promise<{ items: PageView[]; start: number; limit: number; size: number; hasMore: boolean }> {
+    const limit = input.limit ?? Math.min(20, this.config.mcp.maxResults);
+    const start = input.start ?? 0;
+    const includeContent = input.includeContent ?? false;
+
     const cql = buildSearchCql({
       spaceKey: this.config.confluence.spaceKey,
       ...(input.query ? { query: input.query } : {}),
@@ -50,14 +54,14 @@ export class ConfluenceClient {
       ...(input.label ? { label: input.label } : {}),
       ...(input.contentType ? { contentType: input.contentType } : {})
     });
-    const response = await this.searchRaw(cql, input.limit, input.start, input.includeContent);
+    const response = await this.searchRaw(cql, limit, start, includeContent);
     return {
       items: response.results.map((item) => {
         this.assertSpace(item);
         return this.toPageView(item, false);
       }),
-      start: response.start ?? input.start,
-      limit: response.limit ?? input.limit,
+      start: response.start ?? start,
+      limit: response.limit ?? limit,
       size: response.size ?? response.results.length,
       hasMore: Boolean(response._links?.next)
     };
